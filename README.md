@@ -63,18 +63,18 @@ go build -o piango main.go
 The Keyboard layout
 
 The keys are mapped to your physical keyboard rows to mimic a piano layout.
-|Row|	Keys|	Octave|
------------------------
-|Top|	Q W E R T Y U|	High (C5 - B5)|
-|Home|	A S D F G H J|	Mid (C4 - B4)|
-|Bottom|	Z X C V B N M|	Low (C3 - B3)|
+| Row    | Keys          | Octave         |
+|--------|---------------|----------------|
+| Top    | Q W E R T Y U | High (C5 - B5) |
+| Home   | A S D F G H J | Mid (C4 - B4)  |
+| Bottom | Z X C V B N M | Low (C3 - B3)  |
 
 ### Special Controls
-|Key|	Action|
----------------
-|TAB|	Cycle Instruments (Piano -> 8-Bit -> Saw -> ...)|
-|SPACE|	Panic Button (Silence all sounds instantly)|
-|ESC|	Quit|
+| Key   | Action                                           |
+|-------|--------------------------------------------------|
+| TAB   | Cycle Instruments (Piano -> 8-Bit -> Saw -> ...) |
+| SPACE | Panic Button (Silence all sounds instantly)      |
+| ESC   | Quit                                             |
 
 ## How it Works
 
