@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +27,10 @@ var instruments = []Instrument{
 	{Name: "8-Bit Square", Osc: oscSquare},
 	{Name: "Synth Saw", Osc: oscSaw},
 	{Name: "Soft Flute", Osc: oscTriangle},
+	{Name: "Church Organ", Osc: oscOrgan},
+	{Name: "Pure Sine", Osc: oscSine},
+	{Name: "Gameboy Pulse", Osc: oscPulse},
+	{Name: "Sci-Fi Noise", Osc: oscNoise},
 }
 
 // -- Waveform Math --
@@ -52,6 +57,34 @@ func oscSaw(p float64) float64 {
 func oscTriangle(p float64) float64 {
 	norm := p / (2 * math.Pi)
 	return (2.0*math.Abs(2.0*norm-1.0) - 1.0) * 0.2
+}
+
+func oscOrgan(p float64) float64 {
+	// Stack of octaves for a huge sound
+	v1 := math.Sin(p) * 1.0
+	v2 := math.Sin(p*2.0) * 0.5
+	v3 := math.Sin(p*4.0) * 0.25
+	v4 := math.Sin(p*8.0) * 0.125
+	return (v1 + v2 + v3 + v4) * 0.1
+}
+
+func oscSine(p float64) float64 {
+	return math.Sin(p) * 0.3
+}
+
+func oscPulse(p float64) float64 {
+	// 25% Duty Cycle (Classic NES sound)
+	if math.Mod(p, 2*math.Pi) < (math.Pi / 2) {
+		return 0.1
+	}
+	return -0.1
+}
+
+func oscNoise(p float64) float64 {
+	// Mixes a tone with random noise
+	tone := math.Sin(p)
+	noise := rand.Float64()*2.0 - 1.0
+	return (tone*0.5 + noise*0.5) * 0.15
 }
 
 // --- 2. AUDIO ENGINE ---
@@ -250,7 +283,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			voiceLock.Unlock()
 			return m, nil
 
-		// --- INSTRUMENT CHANGE ---
 		case tea.KeyTab:
 			voiceLock.Lock()
 			currentInstID++
