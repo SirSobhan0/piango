@@ -40,7 +40,7 @@ jobs:
           EXT=""
           if [[ "${{ matrix.os }}" == "windows" ]]; then EXT=".exe"; fi
           FILENAME=piango-${{ matrix.os }}-${{ matrix.arch }}${EXT}
-          zip ${{ runner.temp }}/piango-${{ matrix.os }}-${{ matrix.arch }}.zip $FILENAME
+          zip ${{ runner.temp }}/piango-${{ matrix.os }}-${{ matrix.arch }}.zip $FILENAME COPYING
         shell: bash
 
       - name: Upload artifact for release
