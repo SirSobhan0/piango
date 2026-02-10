@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     name: Build on ${{ matrix.os }}
-    # Dynamically select the runner based on the matrix
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -35,9 +34,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25' 
+          go-version: '1.25'
 
-      # Only install ALSA if we are on Linux
+      # Linux-specific: Install ALSA headers
       - name: Install Audio Dependencies (Linux)
         if: matrix.os == 'linux'
         run: |
@@ -45,7 +44,6 @@ jobs:
           sudo apt-get install -y libasound2-dev
 
       # Build the binary
-      # We use 'shell: bash' to ensure this script runs correctly on Windows too
       - name: Build binary
         shell: bash
         run: |
@@ -57,10 +55,6 @@ jobs:
         shell: bash
         run: |
           cd build
-          # Windows runners have 7z or tar, but zip isn't always default.
-          # However, 'tar' is available in git bash on windows.
-          # We use a cross-platform approach or standard zip if available.
-          # Ubuntu/Mac have zip. Windows (Git Bash) usually has zip or tar.
           if command -v zip >/dev/null 2>&1; then
             zip ../${{ matrix.archive_name }} ${{ matrix.filename }}
           else
@@ -88,7 +82,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # This wildcard grabs all zips from the downloaded folders
           files: artifacts/*/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
