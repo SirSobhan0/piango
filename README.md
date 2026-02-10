@@ -35,6 +35,7 @@ On Fedora:
 sudo dnf install alsa-lib-devel
 ```
 
+### Installation
 Download from [relaese page](https://github.com/SirSobhan0/piango/releases)
 
 ||
