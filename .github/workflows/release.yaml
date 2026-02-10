@@ -7,11 +7,26 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Build on ${{ matrix.os }}
+    # Dynamically select the runner based on the matrix
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [linux, windows, darwin]
-        arch: [amd64]
+        include:
+          - os: linux
+            runner: ubuntu-latest
+            filename: piango-linux-amd64
+            archive_name: piango-linux-amd64.zip
+          
+          - os: windows
+            runner: windows-latest
+            filename: piango-windows-amd64.exe
+            archive_name: piango-windows-amd64.zip
+          
+          - os: darwin
+            runner: macos-latest
+            filename: piango-darwin-amd64
+            archive_name: piango-darwin-amd64.zip
 
     steps:
       - name: Checkout code
@@ -20,43 +35,52 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.25' 
 
+      # Only install ALSA if we are on Linux
       - name: Install Audio Dependencies (Linux)
+        if: matrix.os == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
-        
+
+      # Build the binary
+      # We use 'shell: bash' to ensure this script runs correctly on Windows too
       - name: Build binary
+        shell: bash
         run: |
           mkdir -p build
-          EXT=""
-          if [[ "${{ matrix.os }}" == "windows" ]]; then EXT=".exe"; fi
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o build/piango-${{ matrix.os }}-${{ matrix.arch }}${EXT} main.go
+          go build -v -o build/${{ matrix.filename }} main.go
 
+      # Archive (Zip)
       - name: Archive binary
+        shell: bash
         run: |
           cd build
-          EXT=""
-          if [[ "${{ matrix.os }}" == "windows" ]]; then EXT=".exe"; fi
-          FILENAME=piango-${{ matrix.os }}-${{ matrix.arch }}${EXT}
-          zip ${{ runner.temp }}/piango-${{ matrix.os }}-${{ matrix.arch }}.zip $FILENAME
-        shell: bash
+          # Windows runners have 7z or tar, but zip isn't always default.
+          # However, 'tar' is available in git bash on windows.
+          # We use a cross-platform approach or standard zip if available.
+          # Ubuntu/Mac have zip. Windows (Git Bash) usually has zip or tar.
+          if command -v zip >/dev/null 2>&1; then
+            zip ../${{ matrix.archive_name }} ${{ matrix.filename }}
+          else
+            tar -czf ../${{ matrix.archive_name }} ${{ matrix.filename }}
+          fi
 
-      - name: Upload artifact for release
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}-binary
-          path: ${{ runner.temp }}/piango-${{ matrix.os }}-${{ matrix.arch }}.zip
+          name: ${{ matrix.os }}-binary
+          path: ${{ matrix.archive_name }}
 
   release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
+    
     steps:
-      - name: Download all build artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
@@ -64,6 +88,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # This wildcard grabs all zips from the downloaded folders
           files: artifacts/*/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
