@@ -7,25 +7,11 @@ on:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - os: linux
-            runner: ubuntu-latest
-            filename: piango-linux-amd64
-            archive_name: piango-linux-amd64.zip
-          
-          - os: windows
-            runner: windows-latest
-            filename: piango-windows-amd64.exe
-            archive_name: piango-windows-amd64.zip
-          
-          - os: darwin
-            runner: macos-latest
-            filename: piango-darwin-amd64
-            archive_name: piango-darwin-amd64.zip
+        os: [linux, windows, darwin]
+        arch: [amd64]
 
     steps:
       - name: Checkout code
@@ -36,45 +22,41 @@ jobs:
         with:
           go-version: '1.25'
 
-      # Linux-specific: Install ALSA headers
-      - name: Install Audio Dependencies (Linux)
-        if: matrix.os == 'linux'
+      - name: Install dependancies
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
-
-      # Build the binary
+          
       - name: Build binary
-        shell: bash
         run: |
           mkdir -p build
-          go build -v -o build/${{ matrix.filename }} main.go
+          EXT=""
+          if [[ "${{ matrix.os }}" == "windows" ]]; then EXT=".exe"; fi
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o build/piango-${{ matrix.os }}-${{ matrix.arch }}${EXT} main.go
 
-      # Archive (Zip)
       - name: Archive binary
-        shell: bash
         run: |
           cd build
-          if command -v zip >/dev/null 2>&1; then
-            zip ../${{ matrix.archive_name }} ${{ matrix.filename }}
-          else
-            tar -czf ../${{ matrix.archive_name }} ${{ matrix.filename }}
-          fi
+          EXT=""
+          if [[ "${{ matrix.os }}" == "windows" ]]; then EXT=".exe"; fi
+          FILENAME=piango-${{ matrix.os }}-${{ matrix.arch }}${EXT}
+          zip ${{ runner.temp }}/piango-${{ matrix.os }}-${{ matrix.arch }}.zip $FILENAME
+        shell: bash
 
-      - name: Upload artifact
+      - name: Upload artifact for release
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-binary
-          path: ${{ matrix.archive_name }}
+          name: ${{ matrix.os }}-${{ matrix.arch }}-binary
+          path: ${{ runner.temp }}/piango-${{ matrix.os }}-${{ matrix.arch }}.zip
 
   release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
-      - name: Download all artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
