@@ -12,27 +12,73 @@ import (
 	"github.com/gopxl/beep/v2/speaker"
 )
 
+// --- 1. INSTRUMENT DEFINITIONS ---
+
+type Oscillator func(phase float64) float64
+
+type Instrument struct {
+	Name string
+	Osc  Oscillator
+}
+
+var instruments = []Instrument{
+	{Name: "Electric Piano", Osc: oscPiano},
+	{Name: "8-Bit Square", Osc: oscSquare},
+	{Name: "Synth Saw", Osc: oscSaw},
+	{Name: "Soft Flute", Osc: oscTriangle},
+}
+
+// -- Waveform Math --
+
+func oscPiano(p float64) float64 {
+	v1 := math.Sin(p)
+	v2 := math.Sin(p*2.0) * 0.5
+	v3 := math.Sin(p*3.0) * 0.2
+	return (v1 + v2 + v3) * 0.15
+}
+
+func oscSquare(p float64) float64 {
+	if math.Sin(p) >= 0 {
+		return 0.1
+	}
+	return -0.1
+}
+
+func oscSaw(p float64) float64 {
+	norm := p / (2 * math.Pi)
+	return (2.0*norm - 1.0) * 0.1
+}
+
+func oscTriangle(p float64) float64 {
+	norm := p / (2 * math.Pi)
+	return (2.0*math.Abs(2.0*norm-1.0) - 1.0) * 0.2
+}
+
+// --- 2. AUDIO ENGINE ---
+
 var (
-	mixer      = &beep.Mixer{}
-	sampleRate = beep.SampleRate(44100)
-	voiceLock  sync.Mutex
-	voices     = make(map[string]*ActiveVoice)
+	mixer         = &beep.Mixer{}
+	sampleRate    = beep.SampleRate(44100)
+	voiceLock     sync.Mutex
+	voices        = make(map[string]*ActiveVoice)
+	currentInstID = 0
 )
 
 type ActiveVoice struct {
-	streamer *PianoStreamer
+	streamer *SynthStreamer
 	lastSeen time.Time
 }
 
-type PianoStreamer struct {
+type SynthStreamer struct {
 	freq      float64
 	phase     float64
 	vol       float64
+	osc       Oscillator
 	releasing bool
 	finished  bool
 }
 
-func (s *PianoStreamer) Stream(samples [][2]float64) (n int, ok bool) {
+func (s *SynthStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 	const twoPi = 2 * math.Pi
 	step := s.freq * twoPi / float64(sampleRate)
 
@@ -40,10 +86,7 @@ func (s *PianoStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 	decaySpeed := 0.001
 
 	for i := range samples {
-		v1 := math.Sin(s.phase)
-		v2 := math.Sin(s.phase*2.0) * 0.5
-		v3 := math.Sin(s.phase*3.0) * 0.2
-		raw := (v1 + v2 + v3) * 0.15
+		raw := s.osc(s.phase)
 
 		if s.releasing {
 			s.vol -= decaySpeed
@@ -63,16 +106,16 @@ func (s *PianoStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 		samples[i][1] = final
 
 		s.phase += step
-		if s.phase > twoPi {
+		if s.phase >= twoPi {
 			s.phase -= twoPi
 		}
 	}
 	return len(samples), true
 }
 
-func (s *PianoStreamer) Err() error { return nil }
-func (s *PianoStreamer) Stop()      { s.releasing = true }
-func (s *PianoStreamer) Sustain()   { s.releasing = false; s.finished = false }
+func (s *SynthStreamer) Err() error { return nil }
+func (s *SynthStreamer) Stop()      { s.releasing = true }
+func (s *SynthStreamer) Sustain()   { s.releasing = false; s.finished = false }
 
 func updateVoice(key string, freq float64) {
 	voiceLock.Lock()
@@ -91,7 +134,14 @@ func updateVoice(key string, freq float64) {
 		v.streamer.Stop()
 	}
 
-	s := &PianoStreamer{freq: freq, vol: 0}
+	inst := instruments[currentInstID]
+
+	s := &SynthStreamer{
+		freq: freq,
+		vol:  0,
+		osc:  inst.Osc,
+	}
+
 	voices[key] = &ActiveVoice{streamer: s, lastSeen: now}
 	mixer.Add(s)
 }
@@ -112,6 +162,8 @@ func checkWatchdog() {
 		}
 	}
 }
+
+// --- 3. DATA & MODEL ---
 
 type Note struct {
 	Key, Name string
@@ -150,10 +202,14 @@ type TickMsg time.Time
 
 type model struct {
 	activeKeys map[string]bool
+	instName   string
 }
 
 func initialModel() model {
-	return model{activeKeys: make(map[string]bool)}
+	return model{
+		activeKeys: make(map[string]bool),
+		instName:   instruments[0].Name,
+	}
 }
 
 func tick() tea.Cmd {
@@ -184,12 +240,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEscape:
 			return m, tea.Quit
+
 		case tea.KeySpace:
 			speaker.Clear()
 			mixer = &beep.Mixer{}
 			speaker.Play(mixer)
 			voiceLock.Lock()
 			voices = make(map[string]*ActiveVoice)
+			voiceLock.Unlock()
+			return m, nil
+
+		// --- INSTRUMENT CHANGE ---
+		case tea.KeyTab:
+			voiceLock.Lock()
+			currentInstID++
+			if currentInstID >= len(instruments) {
+				currentInstID = 0
+			}
+			m.instName = instruments[currentInstID].Name
 			voiceLock.Unlock()
 			return m, nil
 		}
@@ -202,8 +270,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	s := "\n  🎹 PIANGO\n"
-	s += "  ========\n\n"
+	s := "\n  🎹 PIANGO - " + m.instName + "\n"
+	s += "  " + strings.Repeat("=", len(s)-3) + "\n\n"
 
 	drawRow := func(notes []Note) string {
 		res := "  "
@@ -221,7 +289,7 @@ func (m model) View() string {
 	s += "  Mid : " + drawRow(sortedRows[1]) + "\n\n"
 	s += "  Low : " + drawRow(sortedRows[2]) + "\n\n\n"
 
-	s += "  [ SPACE: Silence ]    [ ESC: Quit ]\n"
+	s += "  [ TAB: Change Inst ]  [ SPACE: Silence ]  [ ESC: Quit ]\n"
 	return s
 }
 
