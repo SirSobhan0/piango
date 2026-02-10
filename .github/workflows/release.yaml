@@ -22,6 +22,11 @@ jobs:
         with:
           go-version: '1.25'
 
+      - name: Install Audio Dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+        
       - name: Build binary
         run: |
           mkdir -p build
