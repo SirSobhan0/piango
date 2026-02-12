@@ -14,8 +14,6 @@ import (
 	"github.com/gopxl/beep/v2/speaker"
 )
 
-// --- 1. INSTRUMENT DEFINITIONS ---
-
 type Oscillator func(phase float64) float64
 
 type Instrument struct {
@@ -25,13 +23,18 @@ type Instrument struct {
 
 var instruments = []Instrument{
 	{Name: "Electric Piano", Osc: oscPiano},
-	{Name: "8-Bit Square", Osc: oscSquare},
-	{Name: "Synth Saw", Osc: oscSaw},
-	{Name: "Soft Flute", Osc: oscTriangle},
-	{Name: "Church Organ", Osc: oscOrgan},
-	{Name: "Pure Sine", Osc: oscSine},
-	{Name: "Gameboy Pulse", Osc: oscPulse},
-	{Name: "Sci-Fi Noise", Osc: oscNoise},
+	{Name: "Retro Square", Osc: oscSquare},
+	{Name: "FM Metallic", Osc: oscFM},
+	{Name: "Distorted Lead", Osc: oscDistortion},
+	{Name: "Glass Bell", Osc: oscBell},
+	{Name: "Cyberpunk Crunch", Osc: oscBitcrush},
+	{Name: "Alien Ring Mod", Osc: oscAlien},
+	{Name: "Hollow Choir", Osc: oscGhost},
+	{Name: "Acid Wavefolder", Osc: oscWavefolder},
+	{Name: "808 Sub Bass", Osc: oscSubBass},
+	{Name: "PWM Pad", Osc: oscPWM},
+	{Name: "Accordion", Osc: oscAccordion},
+	{Name: "Noise", Osc: oscNoise},
 }
 
 func oscPiano(p float64) float64 {
@@ -48,42 +51,85 @@ func oscSquare(p float64) float64 {
 	return -0.1
 }
 
-func oscSaw(p float64) float64 {
-	norm := p / (2 * math.Pi)
-	return (2.0*norm - 1.0) * 0.1
+func oscFM(p float64) float64 {
+	modulator := math.Sin(p*3.14) * 2.0
+	return math.Sin(p+modulator) * 0.2
 }
 
-func oscTriangle(p float64) float64 {
-	norm := p / (2 * math.Pi)
-	return (2.0*math.Abs(2.0*norm-1.0) - 1.0) * 0.2
+func oscDistortion(p float64) float64 {
+	val := math.Sin(p) * 5.0
+	if val > 1.0 {
+		val = 1.0
+	} else if val < -1.0 {
+		val = -1.0
+	}
+	return val * 0.08
 }
 
-func oscOrgan(p float64) float64 {
-	v1 := math.Sin(p) * 1.0
-	v2 := math.Sin(p*2.0) * 0.5
-	v3 := math.Sin(p*4.0) * 0.25
-	v4 := math.Sin(p*8.0) * 0.125
+func oscBell(p float64) float64 {
+	v1 := math.Sin(p)
+	v2 := math.Sin(p*2.76) * 0.6
+	v3 := math.Sin(p*5.4) * 0.4
+	v4 := math.Sin(p*8.9) * 0.2
 	return (v1 + v2 + v3 + v4) * 0.1
 }
 
-func oscSine(p float64) float64 {
-	return math.Sin(p) * 0.3
+func oscBitcrush(p float64) float64 {
+	norm := p / (2 * math.Pi)
+	saw := 2.0*norm - 1.0
+	steps := 4.0
+	crushed := math.Floor(saw*steps) / steps
+	return crushed * 0.15
 }
 
-func oscPulse(p float64) float64 {
-	if math.Mod(p, 2*math.Pi) < (math.Pi / 2) {
-		return 0.1
-	}
-	return -0.1
+func oscAlien(p float64) float64 {
+	norm := p / (2 * math.Pi)
+	tri := 2.0*math.Abs(2.0*norm-1.0) - 1.0
+	ring := math.Sin(p * 5.67)
+	return tri * ring * 0.25
+}
+
+func oscGhost(p float64) float64 {
+	v1 := math.Sin(p)
+	v3 := math.Sin(p*3.0) * 0.3
+	v5 := math.Sin(p*5.0) * 0.1
+	return (v1 + v3 + v5) * math.Cos(p*0.5) * 0.2
+}
+
+func oscWavefolder(p float64) float64 {
+	val := math.Sin(p) * 3.0
+	return math.Sin(val) * 0.2
+}
+
+func oscSubBass(p float64) float64 {
+	val := math.Sin(p) * 1.5
+	return math.Tanh(val) * 0.3
+}
+
+func oscPWM(p float64) float64 {
+	norm := p / (2 * math.Pi)
+	saw1 := 2.0*norm - 1.0
+
+	p2 := math.Mod(p+1.5, 2*math.Pi)
+	norm2 := p2 / (2 * math.Pi)
+	saw2 := 2.0*norm2 - 1.0
+
+	return (saw1 - saw2) * 0.1
+}
+
+func oscAccordion(p float64) float64 {
+	v1 := math.Sin(p)
+	v2 := math.Sin(p*2.0) * 0.5
+	v3 := math.Sin(p*3.0) * 0.8
+	v4 := math.Sin(p*4.0) * 0.2
+	v5 := math.Sin(p*5.0) * 0.4
+	return (v1 + v2 + v3 + v4 + v5) * 0.15
 }
 
 func oscNoise(p float64) float64 {
-	tone := math.Sin(p)
-	noise := rand.Float64()*2.0 - 1.0
-	return (tone*0.5 + noise*0.5) * 0.15
+	rand.NewSource(int64(p))
+	return (rand.Float64()*2.0 - 1.0) * 0.1
 }
-
-// --- 2. AUDIO ENGINE ---
 
 var (
 	mixer         = &beep.Mixer{}
@@ -157,7 +203,7 @@ func updateVoice(key string, freq float64, staccato bool) {
 		delta := now.Sub(v.lastSeen)
 		if delta < 75*time.Millisecond {
 			v.lastSeen = now
-			v.staccato = staccato // Update staccato state dynamically
+			v.staccato = staccato
 			v.streamer.Sustain()
 			return
 		}
@@ -166,7 +212,7 @@ func updateVoice(key string, freq float64, staccato bool) {
 
 	decay := 0.001
 	if staccato {
-		decay = 0.05 // Much faster fade out for staccato
+		decay = 0.05
 	}
 
 	inst := instruments[currentInstID]
@@ -182,7 +228,6 @@ func checkWatchdog() {
 	now := time.Now()
 
 	for k, v := range voices {
-		// Normal sustain waits 600ms. Staccato cuts off super fast (100ms)
 		threshold := 600 * time.Millisecond
 		if v.staccato {
 			threshold = 100 * time.Millisecond
@@ -196,8 +241,6 @@ func checkWatchdog() {
 		}
 	}
 }
-
-// --- 3. DATA & MODEL ---
 
 type Note struct {
 	Key, Name string
@@ -237,20 +280,22 @@ func initNotes() {
 type TickMsg time.Time
 
 type model struct {
-	activeKeys map[string]bool
-	instName   string
-	width      int
-	height     int
-	spectrum   []float64
+	activeKeys  map[string]bool
+	instName    string
+	width       int
+	height      int
+	spectrum    []float64
+	octaveShift int
 }
 
 const numBars = 42
 
 func initialModel() model {
 	return model{
-		activeKeys: make(map[string]bool),
-		instName:   instruments[0].Name,
-		spectrum:   make([]float64, numBars),
+		activeKeys:  make(map[string]bool),
+		instName:    instruments[0].Name,
+		spectrum:    make([]float64, numBars),
+		octaveShift: 0,
 	}
 }
 
@@ -262,7 +307,6 @@ func tick() tea.Cmd {
 
 func (m model) Init() tea.Cmd { return tick() }
 
-// freqToBucket maps a frequency logarithmically to our visualizer bars
 func freqToBucket(freq float64) int {
 	minF, maxF := 100.0, 4000.0
 	if freq < minF {
@@ -292,35 +336,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		voiceLock.Lock()
 		newActive := make(map[string]bool)
 
-		// 1. Decay visualizer bars
 		for i := range m.spectrum {
-			m.spectrum[i] *= 0.82 // 82% decay rate
+			m.spectrum[i] *= 0.82
 		}
 
-		// 2. Map playing notes to visualizer
 		for k, v := range voices {
 			if !v.streamer.finished {
 				newActive[k] = true
 				if note, ok := noteMap[k]; ok {
-					// Excite fundamental frequency
-					b1 := freqToBucket(note.Freq)
+					shiftedFreq := note.Freq * math.Pow(2.0, float64(m.octaveShift))
+
+					b1 := freqToBucket(shiftedFreq)
 					m.spectrum[b1] = 1.0
 
-					// Excite harmonics (fakes an FFT spectrum)
-					if b2 := freqToBucket(note.Freq * 2.0); b2 < numBars {
+					if b2 := freqToBucket(shiftedFreq * 2.0); b2 < numBars {
 						m.spectrum[b2] += 0.5
 					}
-					if b3 := freqToBucket(note.Freq * 3.0); b3 < numBars {
+					if b3 := freqToBucket(shiftedFreq * 3.0); b3 < numBars {
 						m.spectrum[b3] += 0.25
 					}
-					if b4 := freqToBucket(note.Freq * 4.0); b4 < numBars {
+					if b4 := freqToBucket(shiftedFreq * 4.0); b4 < numBars {
 						m.spectrum[b4] += 0.1
 					}
 				}
 			}
 		}
 
-		// 3. Cap spectrum max
 		for i := range m.spectrum {
 			if m.spectrum[i] > 1.0 {
 				m.spectrum[i] = 1.0
@@ -354,25 +395,37 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.instName = instruments[currentInstID].Name
 			voiceLock.Unlock()
 			return m, nil
+
+		case tea.KeyLeft:
+			if m.octaveShift > -2 {
+				m.octaveShift--
+			}
+			return m, nil
+
+		case tea.KeyRight:
+			if m.octaveShift < 2 {
+				m.octaveShift++
+			}
+			return m, nil
 		}
 
 		input := msg.String()
 		lowerInput := strings.ToLower(input)
-		isStaccato := input != lowerInput // True if Shift is held down
+		isStaccato := input != lowerInput
 
 		if note, ok := noteMap[lowerInput]; ok {
-			updateVoice(lowerInput, note.Freq, isStaccato)
+			shiftedFreq := note.Freq * math.Pow(2.0, float64(m.octaveShift))
+			updateVoice(lowerInput, shiftedFreq, isStaccato)
 		}
 	}
 	return m, nil
 }
 
-// --- STYLES ---
 var (
 	panelStyle = lipgloss.NewStyle().
 			Padding(1, 3).
 			Border(lipgloss.ThickBorder()).
-			BorderForeground(lipgloss.Color("#444444")) // Sleek grey
+			BorderForeground(lipgloss.Color("#444444"))
 
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
@@ -380,7 +433,7 @@ var (
 			MarginBottom(1).
 			Padding(0, 2).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#00E6C3")) // Cyan accent
+			BorderForeground(lipgloss.Color("#00E6C3"))
 
 	instStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00E6C3")).
@@ -392,7 +445,7 @@ var (
 			MarginBottom(2)
 
 	waveColor = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00E6C3")) // Unified cyan theme
+			Foreground(lipgloss.Color("#00E6C3"))
 
 	keyStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -418,14 +471,19 @@ func (m model) View() string {
 		return "Initializing..."
 	}
 
-	// 1. Header
+	octStr := fmt.Sprintf("%+d", m.octaveShift)
+	if m.octaveShift == 0 {
+		octStr = " 0"
+	}
+
 	header := lipgloss.JoinHorizontal(lipgloss.Center,
 		titleStyle.Render("🎹 PIANGO"),
 		"   ",
 		instStyle.Render("Preset: "+m.instName),
+		"   ",
+		instStyle.Render("Octave: "+octStr),
 	)
 
-	// 2. Wave Visualizer (Symmetrical)
 	var visLines []string
 	for r := 3; r >= -3; r-- {
 		line := ""
@@ -439,7 +497,7 @@ func (m model) View() string {
 				} else {
 					line += "━"
 				}
-			} else if r > 0 { // Top half
+			} else if r > 0 {
 				if h >= absR {
 					line += "█"
 				} else if h >= absR-0.5 {
@@ -447,7 +505,7 @@ func (m model) View() string {
 				} else {
 					line += " "
 				}
-			} else { // Bottom half
+			} else {
 				if h >= absR {
 					line += "█"
 				} else if h >= absR-0.5 {
@@ -456,20 +514,18 @@ func (m model) View() string {
 					line += " "
 				}
 			}
-			line += " " // spacing between bars
+			line += " "
 		}
 		visLines = append(visLines, waveColor.Render(line))
 	}
 	visualizer := visStyle.Render(strings.Join(visLines, "\n"))
 
-	// 3. Keys
 	var rowsStr []string
 	rowLabels := []string{"High", "Mid ", "Low "}
 
 	for i, rowNotes := range sortedRows {
 		var renderedKeys []string
 
-		// Row Label
 		label := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#6272A4")).
 			Width(6).
@@ -480,7 +536,6 @@ func (m model) View() string {
 
 		renderedKeys = append(renderedKeys, label)
 
-		// Keys
 		for _, n := range rowNotes {
 			keyContent := fmt.Sprintf("%s\n%s", n.Name, strings.ToUpper(n.Key))
 			if m.activeKeys[n.Key] {
@@ -493,14 +548,11 @@ func (m model) View() string {
 	}
 	keyboard := lipgloss.JoinVertical(lipgloss.Left, rowsStr...)
 
-	// 4. Footer
-	help := helpStyle.Render("TAB: Instrument  •  SHIFT+KEY: Fast End  •  SPACE: Silence  •  ESC: Quit")
+	help := helpStyle.Render("TAB: Instrument  •  LEFT/RIGHT: Octave  •  SHIFT+KEY: Fast End  •  SPACE: Silence  •  ESC: Quit")
 
-	// 5. Assemble and Center
 	ui := lipgloss.JoinVertical(lipgloss.Center, header, visualizer, keyboard, help)
 	panel := panelStyle.Render(ui)
 
-	// Place in the dead center of the terminal screen
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, panel)
 }
 
@@ -509,7 +561,6 @@ func main() {
 	speaker.Play(mixer)
 	initNotes()
 
-	// Run Bubble Tea with the Alt Screen (Full-Screen) flag
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v", err)
