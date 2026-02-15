@@ -1,4 +1,4 @@
-module piango
+module github.com/SirSobhan0/piango
 
 go 1.25.5
 
