@@ -40,6 +40,7 @@ jobs:
           EXT=""
           if [[ "${{ matrix.os }}" == "windows" ]]; then EXT=".exe"; fi
           FILENAME=piango-${{ matrix.os }}-${{ matrix.arch }}${EXT}
+          cp ../COPYING .
           zip ${{ runner.temp }}/piango-${{ matrix.os }}-${{ matrix.arch }}.zip $FILENAME COPYING
         shell: bash
 
