@@ -37,6 +37,12 @@ var instruments = []Instrument{
 	{Name: "Noise", Osc: oscNoise},
 }
 
+// Default mappings for the 1-0 keys to the first 10 instruments
+var presets = map[string]int{
+	"1": 0, "2": 1, "3": 2, "4": 3, "5": 4,
+	"6": 5, "7": 6, "8": 7, "9": 8, "0": 9,
+}
+
 func oscPiano(p float64) float64 {
 	v1 := math.Sin(p)
 	v2 := math.Sin(p*2.0) * 0.5
@@ -280,12 +286,14 @@ func initNotes() {
 type TickMsg time.Time
 
 type model struct {
-	activeKeys  map[string]bool
-	instName    string
-	width       int
-	height      int
-	spectrum    []float64
-	octaveShift int
+	activeKeys      map[string]bool
+	instName        string
+	width           int
+	height          int
+	spectrum        []float64
+	octaveShift     int
+	notification    string
+	notifyClearTime time.Time
 }
 
 const numBars = 42
@@ -332,6 +340,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TickMsg:
 		checkWatchdog()
+
+		// Clear notification timer
+		now := time.Now()
+		if m.notification != "" && now.After(m.notifyClearTime) {
+			m.notification = ""
+		}
 
 		voiceLock.Lock()
 		newActive := make(map[string]bool)
@@ -396,6 +410,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			voiceLock.Unlock()
 			return m, nil
 
+		case tea.KeyShiftTab:
+			voiceLock.Lock()
+			currentInstID--
+			if currentInstID < 0 {
+				currentInstID = len(instruments) - 1
+			}
+			m.instName = instruments[currentInstID].Name
+			voiceLock.Unlock()
+			return m, nil
+
 		case tea.KeyLeft:
 			if m.octaveShift > -2 {
 				m.octaveShift--
@@ -410,8 +434,44 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		input := msg.String()
+
+		// 1. Handle Shift+Number for SAVING presets (! @ # $ % ^ & * ( ))
+		shiftedNumbers := map[string]string{
+			"!": "1", "@": "2", "#": "3", "$": "4", "%": "5",
+			"^": "6", "&": "7", "*": "8", "(": "9", ")": "0",
+		}
+
+		if numKey, ok := shiftedNumbers[input]; ok {
+			voiceLock.Lock()
+			presets[numKey] = currentInstID
+			voiceLock.Unlock()
+
+			m.notification = fmt.Sprintf("Saved %s to Key %s", instruments[currentInstID].Name, numKey)
+			m.notifyClearTime = time.Now().Add(2 * time.Second)
+			return m, nil
+		}
+
+		// 2. Handle 1-0 for LOADING presets
+		if len(input) == 1 && input[0] >= '0' && input[0] <= '9' {
+			voiceLock.Lock()
+			if id, ok := presets[input]; ok && id < len(instruments) {
+				currentInstID = id
+				m.instName = instruments[currentInstID].Name
+			}
+			voiceLock.Unlock()
+
+			m.notification = fmt.Sprintf("Loaded Preset %s", input)
+			m.notifyClearTime = time.Now().Add(1 * time.Second)
+			return m, nil
+		}
+
+		// 3. Handle Note playing
 		lowerInput := strings.ToLower(input)
-		isStaccato := input != lowerInput
+		// Staccato applies only if we held Shift AND it's an alphabetical character
+		isStaccato := false
+		if len(input) == 1 && input[0] >= 'A' && input[0] <= 'Z' {
+			isStaccato = true
+		}
 
 		if note, ok := noteMap[lowerInput]; ok {
 			shiftedFreq := note.Freq * math.Pow(2.0, float64(m.octaveShift))
@@ -441,6 +501,13 @@ var (
 			Padding(0, 1).
 			MarginBottom(1)
 
+	notifyStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#111111")).
+			Background(lipgloss.Color("#50FA7B")).
+			Bold(true).
+			Padding(0, 1).
+			MarginBottom(1)
+
 	visStyle = lipgloss.NewStyle().
 			MarginBottom(2)
 
@@ -461,10 +528,30 @@ var (
 			Background(lipgloss.Color("#00E6C3")).
 			Bold(true)
 
+	presetTitleStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#6272A4")).
+				MarginTop(1).
+				MarginBottom(1)
+
+	presetTextStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#8BE9FD"))
+
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666")).
 			MarginTop(2)
 )
+
+// Helper function to render presets properly truncated
+func formatPreset(key string) string {
+	name := "-"
+	if id, ok := presets[key]; ok {
+		name = instruments[id].Name
+	}
+	if len(name) > 12 {
+		name = name[:10] + ".."
+	}
+	return fmt.Sprintf("[%s] %-12s", key, name)
+}
 
 func (m model) View() string {
 	if m.width == 0 {
@@ -476,13 +563,19 @@ func (m model) View() string {
 		octStr = " 0"
 	}
 
-	header := lipgloss.JoinHorizontal(lipgloss.Center,
+	// Dynamic Header Content
+	headerItems := []string{
 		titleStyle.Render("🎹 PIANGO"),
 		"   ",
-		instStyle.Render("Preset: "+m.instName),
+		instStyle.Render("Preset: " + m.instName),
 		"   ",
-		instStyle.Render("Octave: "+octStr),
-	)
+		instStyle.Render("Octave: " + octStr),
+	}
+	if m.notification != "" {
+		headerItems = append(headerItems, "   ", notifyStyle.Render(m.notification))
+	}
+
+	header := lipgloss.JoinHorizontal(lipgloss.Center, headerItems...)
 
 	var visLines []string
 	for r := 3; r >= -3; r-- {
@@ -548,9 +641,27 @@ func (m model) View() string {
 	}
 	keyboard := lipgloss.JoinVertical(lipgloss.Left, rowsStr...)
 
-	help := helpStyle.Render("TAB: Instrument  •  LEFT/RIGHT: Octave  •  SHIFT+KEY: Fast End  •  SPACE: Silence  •  ESC: Quit")
+	// Presets Bottom Bar
+	var presetItems1, presetItems2 []string
+	keys1 := []string{"1", "2", "3", "4", "5"}
+	keys2 := []string{"6", "7", "8", "9", "0"}
 
-	ui := lipgloss.JoinVertical(lipgloss.Center, header, visualizer, keyboard, help)
+	for _, k := range keys1 {
+		presetItems1 = append(presetItems1, formatPreset(k))
+	}
+	for _, k := range keys2 {
+		presetItems2 = append(presetItems2, formatPreset(k))
+	}
+
+	presetBar := lipgloss.JoinVertical(lipgloss.Center,
+		presetTitleStyle.Render("--- SAVED PRESETS ---"),
+		presetTextStyle.Render(strings.Join(presetItems1, "   ")),
+		presetTextStyle.Render(strings.Join(presetItems2, "   ")),
+	)
+
+	help := helpStyle.Render("TAB/S-TAB: Inst  •  1-0: Load  •  SHIFT+1-0: Save  •  L/R: Octave  •  SHIFT+KEY: Fast End")
+
+	ui := lipgloss.JoinVertical(lipgloss.Center, header, visualizer, keyboard, presetBar, help)
 	panel := panelStyle.Render(ui)
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, panel)
