@@ -4,6 +4,8 @@
 
 Piango is a low-latency, polyphonic synthesizer that runs entirely in your terminal. It features real-time audio generation, multiple instrument presets, and a reactive TUI (Text User Interface) built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
+![piango gif](assets/piango.gif)
+
 ## Features
 
 * **3 Full Octaves:** Play Low (`Z-M`), Mid (`A-J`), and High (`Q-U`) ranges.
