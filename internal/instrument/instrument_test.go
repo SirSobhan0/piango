@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SirSobhan0/piango/internal/mathexpr"
+	"github.com/SirSobhan0/piango/v2/internal/mathexpr"
 )
 
 func TestBuiltinsAllCompile(t *testing.T) {

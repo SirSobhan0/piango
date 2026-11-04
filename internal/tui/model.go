@@ -8,11 +8,11 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/SirSobhan0/piango/internal/dsp"
-	"github.com/SirSobhan0/piango/internal/instrument"
-	"github.com/SirSobhan0/piango/internal/mathexpr"
-	"github.com/SirSobhan0/piango/internal/synth"
-	"github.com/SirSobhan0/piango/internal/tuning"
+	"github.com/SirSobhan0/piango/v2/internal/dsp"
+	"github.com/SirSobhan0/piango/v2/internal/instrument"
+	"github.com/SirSobhan0/piango/v2/internal/mathexpr"
+	"github.com/SirSobhan0/piango/v2/internal/synth"
+	"github.com/SirSobhan0/piango/v2/internal/tuning"
 )
 
 const (

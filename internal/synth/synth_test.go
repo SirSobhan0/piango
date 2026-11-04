@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SirSobhan0/piango/internal/instrument"
+	"github.com/SirSobhan0/piango/v2/internal/instrument"
 )
 
 const testSR = 44100

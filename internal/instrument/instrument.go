@@ -8,7 +8,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/SirSobhan0/piango/internal/mathexpr"
+	"github.com/SirSobhan0/piango/v2/internal/mathexpr"
 )
 
 // Envelope is a classic ADSR shape expressed in seconds. Levels are 0..1.

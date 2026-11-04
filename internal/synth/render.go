@@ -8,7 +8,7 @@ import (
 	"github.com/gopxl/beep/v2"
 	"github.com/gopxl/beep/v2/wav"
 
-	"github.com/SirSobhan0/piango/internal/instrument"
+	"github.com/SirSobhan0/piango/v2/internal/instrument"
 )
 
 // Render plays a sequence of notes offline. It drives the same engine as live

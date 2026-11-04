@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/SirSobhan0/piango/internal/instrument"
-	"github.com/SirSobhan0/piango/internal/synth"
+	"github.com/SirSobhan0/piango/v2/internal/instrument"
+	"github.com/SirSobhan0/piango/v2/internal/synth"
 )
 
 func testModel(t *testing.T) Model {
@@ -504,19 +504,3 @@ func TestOscilloscopeStreaming(t *testing.T) {
 	silentScope := m.scopePlot(m.vizSize())
 	t.Logf("\n=== OSCILLOSCOPE SILENT ===\n%s\n", silentScope)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

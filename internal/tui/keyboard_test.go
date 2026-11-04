@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/SirSobhan0/piango/internal/tuning"
+	"github.com/SirSobhan0/piango/v2/internal/tuning"
 )
 
 func TestHomeRowStartsAtReference(t *testing.T) {

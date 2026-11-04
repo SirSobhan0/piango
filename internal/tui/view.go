@@ -8,9 +8,9 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/SirSobhan0/piango/internal/dsp"
-	"github.com/SirSobhan0/piango/internal/mathexpr"
-	"github.com/SirSobhan0/piango/internal/tuning"
+	"github.com/SirSobhan0/piango/v2/internal/dsp"
+	"github.com/SirSobhan0/piango/v2/internal/mathexpr"
+	"github.com/SirSobhan0/piango/v2/internal/tuning"
 )
 
 // View renders the whole screen.

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SirSobhan0/piango/internal/instrument"
-	"github.com/SirSobhan0/piango/internal/synth"
-	"github.com/SirSobhan0/piango/internal/tuning"
+	"github.com/SirSobhan0/piango/v2/internal/instrument"
+	"github.com/SirSobhan0/piango/v2/internal/synth"
+	"github.com/SirSobhan0/piango/v2/internal/tuning"
 )
 
 // testPlayer returns a player driven by a manually advanced clock, so the

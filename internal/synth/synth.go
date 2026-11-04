@@ -7,9 +7,9 @@ import (
 	"math"
 	"sync"
 
-	"github.com/SirSobhan0/piango/internal/dsp"
-	"github.com/SirSobhan0/piango/internal/instrument"
-	"github.com/SirSobhan0/piango/internal/mathexpr"
+	"github.com/SirSobhan0/piango/v2/internal/dsp"
+	"github.com/SirSobhan0/piango/v2/internal/instrument"
+	"github.com/SirSobhan0/piango/v2/internal/mathexpr"
 )
 
 // stage tracks where a voice is in its envelope.

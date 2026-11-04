@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SirSobhan0/piango/internal/dsp"
-	"github.com/SirSobhan0/piango/internal/instrument"
+	"github.com/SirSobhan0/piango/v2/internal/dsp"
+	"github.com/SirSobhan0/piango/v2/internal/instrument"
 )
 
 func renderInst(t *testing.T) *instrument.Instrument {

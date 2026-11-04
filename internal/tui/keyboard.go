@@ -4,7 +4,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/SirSobhan0/piango/internal/tuning"
+	"github.com/SirSobhan0/piango/v2/internal/tuning"
 )
 
 // Key is one playable key on the computer keyboard.

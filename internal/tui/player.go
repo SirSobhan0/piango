@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SirSobhan0/piango/internal/synth"
+	"github.com/SirSobhan0/piango/v2/internal/synth"
 )
 
 // Terminals report key presses but never key releases, so a held note is seen
