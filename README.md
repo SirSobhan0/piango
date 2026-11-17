@@ -44,7 +44,7 @@ Download from the [release page](https://github.com/SirSobhan0/piango/releases)
 ||
 
 ```bash
-go install github.com/SirSobhan0/piango@latest
+go install github.com/SirSobhan0/piango/v2@latest
 ```
 
 ||
